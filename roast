@@ -1,0 +1,67 @@
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+async function getSpotifyData(token) {
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const [artistsRes, tracksRes] = await Promise.all([
+    fetch("https://api.spotify.com/v1/me/top/artists?limit=10", { headers }),
+    fetch("https://api.spotify.com/v1/me/top/tracks?limit=10", { headers })
+  ]);
+
+  const artists = (await artistsRes.json()).items;
+  const tracks = (await tracksRes.json()).items;
+
+  return {
+    artists: artists.map(a => a.name),
+    tracks: tracks.map(t => t.name),
+    genres: artists.flatMap(a => a.genres).slice(0, 10)
+  };
+}
+
+function buildPrompt(data) {
+  return `
+You are an extremely sarcastic, brutal music critic AI.
+
+Analyze this user's Spotify taste deeply and roast them in a long, creative, humorous but savage monologue (20–30 sentences).
+
+DATA:
+Top artists: ${data.artists.join(", ")}
+Top tracks: ${data.tracks.join(", ")}
+Genres: ${data.genres.join(", ")}
+
+Rules:
+- Be funny but ruthless
+- No emojis
+- No short answers
+- Use metaphors, irony, and psychological insight
+- Act like a tired genius critic who has seen too much mainstream music
+`;
+}
+
+export default async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+
+    const spotifyData = await getSpotifyData(token);
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a savage music critic AI." },
+        { role: "user", content: buildPrompt(spotifyData) }
+      ]
+    });
+
+    res.json({
+      roast: completion.choices[0].message.content,
+      data: spotifyData
+    });
+
+  } catch (e) {
+    res.status(500).json({ error: "AI się obraziło na twój gust" });
+  }
+};
