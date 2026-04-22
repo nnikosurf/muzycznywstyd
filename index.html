@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Spotify Roast</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="card">
+    <h1>AI analizuje twój muzyczny byt</h1>
+    <p>To nie jest roast. To diagnoza.</p>
+
+    <button id="login">Connect Spotify</button>
+
+    <div id="output"></div>
+  </div>
+
+<script>
+const CLIENT_ID = "TWOJ_CLIENT_ID";
+const REDIRECT_URI = "https://twoja-strona.vercel.app";
+
+document.getElementById("login").onclick = () => {
+  window.location.href =
+    "https://accounts.spotify.com/authorize?" +
+    new URLSearchParams({
+      client_id: CLIENT_ID,
+      response_type: "token",
+      redirect_uri: REDIRECT_URI,
+      scope: "user-top-read"
+    });
+};
+
+async function runAI(token) {
+  document.getElementById("output").innerText =
+    "AI właśnie ocenia twoje muzyczne grzechy...";
+
+  const res = await fetch("/api/roast", {
+    headers: { Authorization: token }
+  });
+
+  const data = await res.json();
+  document.getElementById("output").innerText = data.roast;
+}
+
+if (window.location.hash.includes("access_token")) {
+  const token = new URLSearchParams(
+    window.location.hash.replace("#", "")
+  ).get("access_token");
+
+  runAI(token);
+}
+</script>
+
+</body>
+</html>
